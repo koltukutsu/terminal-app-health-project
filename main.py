@@ -1,75 +1,50 @@
-import sqlite3
-from datetime import datetime
+from osgb_system import OSGBSystem
+from appointment import Appointment
+from doctor import Doctor
+from security_officer import SecurityOfficer
+from typing import List
 
-# Veritabanı bağlantısını kurma
-def create_connection():
-    conn = None
-    try:
-        conn = sqlite3.connect('osgb.db')
-        return conn
-    except Error as e:
-        print(e)
-    return conn
-
-# Veritabanında gerekli tabloları oluşturma
-def setup_database(conn):
-    try:
-        c = conn.cursor()
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY,
-            event_type TEXT NOT NULL,
-            event_date TEXT NOT NULL,
-            assigned_doctor TEXT,
-            assigned_safety_officer TEXT,
-            status TEXT NOT NULL
-        )
-        """)
-        conn.commit()
-    except Error as e:
-        print(e)
-
-# Randevu al
-def schedule_event(conn, event_type, event_date, doctor, safety_officer):
-    try:
-        sql = ''' INSERT INTO events(event_type, event_date, assigned_doctor, assigned_safety_officer, status)
-                  VALUES(?,?,?,?, 'scheduled') '''
-        cur = conn.cursor()
-        cur.execute(sql, (event_type, event_date, doctor, safety_officer))
-        conn.commit()
-        return cur.lastrowid
-    except Error as e:
-        print(e)
-
-# Ana menü
-def main_menu():
-    print("OSGB Etkinlik Yönetim Sistemi")
-    print("1. Randevu Al")
-    print("2. Etkinlik Durumunu Güncelle")
-    print("3. Raporları Görüntüle")
-    print("4. Çıkış")
-    choice = input("Lütfen yapmak istediğiniz işlemi seçiniz: ")
-    return choice
-
-# Uygulamayı başlat
-def main():
-    conn = create_connection()
-    setup_database(conn)
+def get_valid_index(max_index: int, prompt: str) -> int:
     while True:
-        choice = main_menu()
+        try:
+            index = int(input(prompt)) - 1
+            if 0 <= index < max_index:
+                return index
+            else:
+                print("Geçersiz seçim. Lütfen tekrar deneyin.")
+        except ValueError:
+            print("Geçersiz seçim. Lütfen tekrar deneyin.")
+
+def main():
+    system = OSGBSystem()
+    while True:
+        choice = system.main_menu()
         if choice == '1':
-            event_type = input("Etkinlik türünü giriniz: ")
-            event_date = input("Etkinlik tarihini giriniz (YYYY-MM-DD): ")
-            doctor = input("Atanacak doktor: ")
-            safety_officer = input("Atanacak güvenlik görevlisi: ")
-            schedule_event(conn, event_type, event_date, doctor, safety_officer)
+            appointment_types = system.list_appointment_types()
+            print("Mevcut Randevu Türleri:")
+            for i, appointment_type in enumerate(appointment_types, 1):
+                print(f"{i}. {appointment_type[0]}")
+            appointment_type_index = get_valid_index(len(appointment_types), "Randevu türünü seçiniz (numara ile): ")
+            appointment_type = appointment_types[appointment_type_index][0]
+
+            doctors:List[Doctor] = system.list_doctors()
+            print("Mevcut Doktorlar:")
+            for i, doctor in enumerate(doctors, 1):
+                print(f"{i}. {doctor.name}")
+            doctor_index = get_valid_index(len(doctors), "Doktor seçiniz (numara ile): ")
+            doctor = doctors[doctor_index]
+
+            security_officers = system.list_security_officers()
+            print("Mevcut Güvenlik Görevlileri:")
+            for i, officer in enumerate(security_officers, 1):
+                print(f"{i}. {officer.name}")
+            officer_index = get_valid_index(len(security_officers), "Güvenlik görevlisini seçiniz (numara ile): ")
+            security_officer: SecurityOfficer = security_officers[officer_index]
+
+            appointment_date = input("Randevu tarihini giriniz (YYYY-MM-DD): ")
+            appointment:Appointment = Appointment(appointment_type, appointment_date, doctor, security_officer)
+            system.schedule_appointment(appointment)
         elif choice == '2':
-            # Etkinlik durumunu güncelleme kodları buraya
-            pass
-        elif choice == '3':
-            # Raporlama kodları buraya
-            pass
-        elif choice == '4':
             print("Sistemden çıkılıyor...")
             break
         else:
